@@ -1,0 +1,11 @@
+{
+  "name": "todolist",
+  "version": "1.0.0",
+  "description": "-",
+  "main": "todo_list.ts",
+  "scripts": {
+    "test": "ts-node todo_list.ts"
+  },
+  "author": "",
+  "license": "ISC"
+}
