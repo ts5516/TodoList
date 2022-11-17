@@ -2,10 +2,24 @@
   "name": "todolist",
   "version": "1.0.0",
   "description": "-",
-  "main": "todo_list.ts",
+  "main": "server.ts",
+  "type":"module",
   "scripts": {
-    "test": "ts-node todo_list.ts"
+    "start": "",
+    "build": "tsc -t es5 public/todo_list.ts",
+    "dev": "nodemon --watch \"*.ts\" --exec \"ts-node\" server.ts"
   },
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "jsdom": "^20.0.2",
+    "ts-node": "^10.9.1",
+    "typescript": "^4.8.4"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.14",
+    "@types/jsdom": "^20.0.1",
+    "express": "^4.18.2",
+    "nodemon": "^2.0.20"
+  }
 }
