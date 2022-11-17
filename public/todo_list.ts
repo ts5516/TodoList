@@ -108,7 +108,8 @@ function addPageEventListener(page: Page): void {
     page.inputElement.addEventListener('keypress', (event) => {
         if (event.key === 'Enter' &&
             (event.target as HTMLInputElement).value !== '') {
-            eventHandler(event, page);
+            eventAddListItem(event, page);
+            render(page);
         }
     });
 
@@ -126,34 +127,10 @@ function eventRemoveCheckedItem(page: Page): void {
     }
 }
 
-function eventHandler(
-    event: MouseEvent | KeyboardEvent, page: Page, todo?: Todo): void {
-    update(event, page, todo);
-    render(page);
-}
-
-function update(
-    event: MouseEvent | KeyboardEvent, page: Page, todo?: Todo): void {
-    if (event instanceof KeyboardEvent) {
-        if (todo) {
-            todo.flipEditable();
-            todo.content = (event.target as HTMLInputElement).value;
-        } else {
-            const content = (event.target as HTMLInputElement).value;
-            page.todoList.append(content);
-            page.inputElement.value = '';
-        }
-    } else if (event instanceof MouseEvent && todo) {
-        if (event.target instanceof HTMLDivElement) {
-            if (event.target.className === 'checkbox') {
-                todo.flipIsCompleted();
-            } else {
-                todo.flipEditable();
-            }
-        } else {
-            page.todoList.remove(todo);
-        }
-    }
+function eventAddListItem(event: KeyboardEvent, page: Page): void {
+    const content = (event.target as HTMLInputElement).value;
+    page.todoList.append(content);
+    page.inputElement.value = '';
 }
 
 function render(page: Page): void {
@@ -182,7 +159,8 @@ function createEditItem(page: Page, todo: Todo): void {
     inputElement.classList.add('editInput');
     inputElement.addEventListener('keypress', (event) => {
         if (event.key === 'Enter') {
-            eventHandler(event, page, todo);
+            eventEditListItem(event, todo);
+            render(page);
         }
     });
 
@@ -197,21 +175,24 @@ function createReadItem(page: Page, todo: Todo): void {
     const checkboxElement = document.createElement('div');
     checkboxElement.classList.add('checkbox');
     checkboxElement.addEventListener('click', (event) => {
-        eventHandler(event, page, todo);
+        eventCheckListItem(todo);
+        render(page);
     });
 
     const todoElement = document.createElement('div');
     todoElement.classList.add('todo');
     todoElement.innerText = todo.content;
     todoElement.addEventListener('dblclick', (event) => {
-        eventHandler(event, page, todo);
+        eventEditListItem(event, todo);
+        render(page);
     });
 
     const deleteButtonElement = document.createElement('button');
     deleteButtonElement.classList.add('deleteBotton');
     deleteButtonElement.innerHTML = 'X';
     deleteButtonElement.addEventListener('click', (event) => {
-        eventHandler(event, page, todo);
+        eventDeleteListItem(event, page, todo);
+        render(page);
     });
 
     if (todo.isCompleted) {
@@ -224,4 +205,21 @@ function createReadItem(page: Page, todo: Todo): void {
     listItem.appendChild(deleteButtonElement);
     page.listElement.appendChild(listItem);
 }
+
+function eventEditListItem(
+    event: KeyboardEvent | MouseEvent, todo: Todo): void {
+    todo.flipEditable();
+    if (event.target instanceof HTMLInputElement) {
+        todo.content = event.target.value;
+    }
+}
+
+function eventCheckListItem(todo: Todo): void {
+    todo.flipIsCompleted();
+}
+
+function eventDeleteListItem(event: MouseEvent, page: Page, todo: Todo): void {
+    page.todoList.remove(todo);
+}
+
 run();

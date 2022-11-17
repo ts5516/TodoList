@@ -108,7 +108,8 @@ function addPageEventListener(page) {
     page.inputElement.addEventListener('keypress', function (event) {
         if (event.key === 'Enter' &&
             event.target.value !== '') {
-            eventHandler(event, page);
+            eventAddListItem(event, page);
+            render(page);
         }
     });
     page.removeCheckedItemsElement.addEventListener('click', function (event) {
@@ -123,35 +124,10 @@ function eventRemoveCheckedItem(page) {
         }
     }
 }
-function eventHandler(event, page, todo) {
-    update(event, page, todo);
-    render(page);
-}
-function update(event, page, todo) {
-    if (event instanceof KeyboardEvent) {
-        if (todo) {
-            todo.flipEditable();
-            todo.content = event.target.value;
-        }
-        else {
-            var content = event.target.value;
-            page.todoList.append(content);
-            page.inputElement.value = '';
-        }
-    }
-    else if (event instanceof MouseEvent && todo) {
-        if (event.target instanceof HTMLDivElement) {
-            if (event.target.className === 'checkbox') {
-                todo.flipIsCompleted();
-            }
-            else {
-                todo.flipEditable();
-            }
-        }
-        else {
-            page.todoList.remove(todo);
-        }
-    }
+function eventAddListItem(event, page) {
+    var content = event.target.value;
+    page.todoList.append(content);
+    page.inputElement.value = '';
 }
 function render(page) {
     page.listElement.innerHTML = '';
@@ -176,7 +152,8 @@ function createEditItem(page, todo) {
     inputElement.classList.add('editInput');
     inputElement.addEventListener('keypress', function (event) {
         if (event.key === 'Enter') {
-            eventHandler(event, page, todo);
+            eventEditListItem(event, todo);
+            render(page);
         }
     });
     listItem.appendChild(inputElement);
@@ -188,19 +165,22 @@ function createReadItem(page, todo) {
     var checkboxElement = document.createElement('div');
     checkboxElement.classList.add('checkbox');
     checkboxElement.addEventListener('click', function (event) {
-        eventHandler(event, page, todo);
+        eventCheckListItem(todo);
+        render(page);
     });
     var todoElement = document.createElement('div');
     todoElement.classList.add('todo');
     todoElement.innerText = todo.content;
     todoElement.addEventListener('dblclick', function (event) {
-        eventHandler(event, page, todo);
+        eventEditListItem(event, todo);
+        render(page);
     });
     var deleteButtonElement = document.createElement('button');
     deleteButtonElement.classList.add('deleteBotton');
     deleteButtonElement.innerHTML = 'X';
     deleteButtonElement.addEventListener('click', function (event) {
-        eventHandler(event, page, todo);
+        eventDeleteListItem(event, page, todo);
+        render(page);
     });
     if (todo.isCompleted) {
         listItem.classList.add('checked');
@@ -210,5 +190,17 @@ function createReadItem(page, todo) {
     listItem.appendChild(todoElement);
     listItem.appendChild(deleteButtonElement);
     page.listElement.appendChild(listItem);
+}
+function eventEditListItem(event, todo) {
+    todo.flipEditable();
+    if (event.target instanceof HTMLInputElement) {
+        todo.content = event.target.value;
+    }
+}
+function eventCheckListItem(todo) {
+    todo.flipIsCompleted();
+}
+function eventDeleteListItem(event, page, todo) {
+    page.todoList.remove(todo);
 }
 run();
