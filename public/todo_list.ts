@@ -1,44 +1,127 @@
 //todo_list.ts
-class Todo {
-    private _content: string;
+class TodoListItem {
+    private itemContainer: HTMLLIElement;
+    private checkboxElement: HTMLDivElement;
+    private contentElement: HTMLDivElement;
+    private deleteButtonElement: HTMLButtonElement;
+    private inputElement: HTMLInputElement;
+
     private _isCompleted: boolean;
     private _editable: boolean;
+    private _content: string;
 
     constructor(content: string) {
-        this._content = content;
+        this.itemContainer = document.createElement('li');
+        this.itemContainer.classList.add('item');
+
+        this.checkboxElement = document.createElement('div');
+        this.checkboxElement.classList.add('checkbox');
+
+        this.contentElement = document.createElement('div');
+        this.contentElement.classList.add('todo');
+        this.contentElement.innerText = content;
+
+        this.deleteButtonElement = document.createElement('button');
+        this.deleteButtonElement.classList.add('deleteButton');
+        this.deleteButtonElement.innerHTML = 'X';
+
+        this.inputElement = document.createElement('input');
+        this.inputElement.classList.add('input');
+        this.inputElement.value = content;
+
+        this.itemContainer.appendChild(this.checkboxElement);
+        this.itemContainer.appendChild(this.contentElement);
+        this.itemContainer.appendChild(this.deleteButtonElement);
+
         this._isCompleted = false;
         this._editable = false;
+        this._content = content;
     }
 
-    set content(cont) { this._content = cont; }
+    flipIsCompleted(): void {
+        this._isCompleted = !this._isCompleted;
 
-    get content() { return this._content; }
-    get isCompleted() { return this._isCompleted; }
-    get editable() { return this._editable; }
-
-    flipIsCompleted(): void { this._isCompleted = !this._isCompleted; }
-    flipEditable(): void { this._editable = !this._editable; }
-}
-
-class TodoList {
-    private todos: Todo[] = [];
-
-    constructor() { }
-
-    append(todo: string | Todo): number {
-        if (typeof todo === 'string') {
-            return this.todos.push(new Todo(todo));
+        if (this._isCompleted) {
+            this.itemContainer.classList.add('checked');
+            this.checkboxElement.innerText = '✔';
         } else {
-            return this.todos.push(todo);
+            this.itemContainer.classList.remove('checked');
+            this.checkboxElement.innerText = '';
         }
     }
 
-    remove(todo: Todo): void {
-        const index = this.todos.indexOf(todo);
-        if (index > -1) { this.todos.splice(index, 1); }
+    flipEditable(): void {
+        this._editable = !this._editable;
+        this.itemContainer.innerHTML = '';
+        this.inputElement.textContent = this._content;
+
+        if (this._editable) {
+            this.itemContainer.appendChild(this.inputElement);
+        } else {
+            this.itemContainer.appendChild(this.checkboxElement);
+            this.itemContainer.appendChild(this.contentElement);
+            this.itemContainer.appendChild(this.deleteButtonElement);
+        }
     }
 
-    get array(): Array<Todo> { return this.todos; }
+    get isCompleted(): boolean { return this._isCompleted; }
+    get editable(): boolean { return this._editable; }
+    get content(): string { return this._content; }
+    get container(): HTMLLIElement { return this.itemContainer; }
+
+    setContent(content: string) {
+        this._content = content;
+        this.inputElement.value = this._content;
+        this.contentElement.innerText = this._content;
+    }
+}
+
+class TodoList {
+    private _items: TodoListItem[] = [];
+
+    constructor() { }
+
+    add(item: TodoListItem | string): number {
+        if (item instanceof TodoListItem) {
+            return this._items.push(item);
+        } else {
+            const tItem = new TodoListItem(item);
+            return this._items.push(tItem);
+        }
+
+    }
+
+    remove(item: HTMLLIElement): number {
+        for (let i = 0; i < this._items.length; i++) {
+            if (this._items[i].container === item) {
+                this._items.splice(i, 1);
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    flipIsCompleted(item: HTMLLIElement): void {
+        for (let i = 0; i < this._items.length; i++) {
+            if (this._items[i].container === item) {
+                this._items[i].flipIsCompleted();
+            }
+        }
+    }
+
+    flipEditable(item: HTMLLIElement, content: string): void {
+        for (let i = 0; i < this._items.length; i++) {
+            if (this._items[i].container === item) {
+                this._items[i].setContent(content);
+                this._items[i].flipEditable();
+            }
+        }
+    }
+
+    get numOfLeftItems(): number {
+        return this._items.filter(todo => todo.isCompleted === false).length;
+    }
+    get array(): Array<TodoListItem> { return this._items; }
 }
 
 type Page = {
@@ -106,120 +189,89 @@ function initRemoveCheckedItemsElement(): HTMLElement {
 
 function addPageEventListener(page: Page): void {
     page.inputElement.addEventListener('keypress', (event) => {
-        if (event.key === 'Enter' &&
-            (event.target as HTMLInputElement).value !== '') {
-            eventAddListItem(event, page);
+        if (event.target instanceof HTMLInputElement &&
+            event.target.value !== '' &&
+            event.key === 'Enter') {
+            eventAddListItem(event.target, page);
             render(page);
         }
     });
 
-    page.removeCheckedItemsElement.addEventListener('click', (event) => {
+    page.removeCheckedItemsElement.addEventListener('click', () => {
         eventRemoveCheckedItem(page);
         render(page);
+    });
+
+    page.listElement.addEventListener('click', (event) => {
+        if (event.target instanceof HTMLDivElement &&
+            event.target.classList.value === 'checkbox') {
+            eventCheckListItem(event.target, page);
+            render(page);
+        } else if (event.target instanceof HTMLButtonElement &&
+            event.target.innerHTML === 'X') {
+            eventDeleteListItem(event.target, page);
+            render(page);
+        }
+    });
+
+    page.listElement.addEventListener('dblclick', (event) => {
+        if (event.target instanceof HTMLDivElement &&
+            event.target.classList.value === 'todo') {
+            eventEditListItem(event.target, page);
+            render(page);
+        }
+    });
+
+    page.listElement.addEventListener('keypress', (event) => {
+        if (event.target instanceof HTMLInputElement &&
+            event.target.value !== '' &&
+            event.key === 'Enter') {
+            eventEditListItem(event.target, page);
+            render(page);
+        }
     })
 }
 
 function eventRemoveCheckedItem(page: Page): void {
     for (let i = page.todoList.array.length; i--;) {
         if (page.todoList.array[i].isCompleted) {
-            page.todoList.remove(page.todoList.array[i]);
+            page.todoList.remove(page.todoList.array[i].container);
         }
     }
 }
 
-function eventAddListItem(event: KeyboardEvent, page: Page): void {
-    const content = (event.target as HTMLInputElement).value;
-    page.todoList.append(content);
+function eventAddListItem(target: HTMLInputElement, page: Page): void {
+    page.todoList.add(target.value);
     page.inputElement.value = '';
+}
+
+function eventEditListItem(
+    target: HTMLInputElement | HTMLDivElement, page: Page): void {
+    if (target instanceof HTMLInputElement) {
+        page.todoList.flipEditable(
+            target.parentNode as HTMLLIElement, target.value);
+    } else {
+        page.todoList.flipEditable(
+            target.parentNode as HTMLLIElement, target.innerText);
+    }
+}
+
+function eventCheckListItem(target: HTMLDivElement, page: Page): void {
+    page.todoList.flipIsCompleted(target.parentElement as HTMLLIElement);
+}
+
+function eventDeleteListItem(target: HTMLButtonElement, page: Page): void {
+    page.todoList.remove(target.parentNode as HTMLLIElement);
 }
 
 function render(page: Page): void {
     page.listElement.innerHTML = '';
 
     page.todoList.array.forEach(todo => {
-        if (todo.editable) {
-            createEditItem(page, todo);
-        } else {
-            createReadItem(page, todo);
-        }
+        page.listElement.appendChild(todo.container);
     });
 
-    const getLeftItems = () => {
-        return page.todoList.array.filter(todo => todo.isCompleted === false);
-    }
-    page.leftItemsElement.innerHTML = getLeftItems().length + '개 남음';
-}
-
-function createEditItem(page: Page, todo: Todo): void {
-    const listItem = document.createElement('li');
-    listItem.classList.add('item');
-
-    const inputElement = document.createElement('input');
-    inputElement.value = todo.content;
-    inputElement.classList.add('editInput');
-    inputElement.addEventListener('keypress', (event) => {
-        if (event.key === 'Enter') {
-            eventEditListItem(event, todo);
-            render(page);
-        }
-    });
-
-    listItem.appendChild(inputElement);
-    page.listElement.appendChild(listItem);
-}
-
-function createReadItem(page: Page, todo: Todo): void {
-    const listItem = document.createElement('li');
-    listItem.classList.add('item');
-
-    const checkboxElement = document.createElement('div');
-    checkboxElement.classList.add('checkbox');
-    checkboxElement.addEventListener('click', (event) => {
-        eventCheckListItem(todo);
-        render(page);
-    });
-
-    const todoElement = document.createElement('div');
-    todoElement.classList.add('todo');
-    todoElement.innerText = todo.content;
-    todoElement.addEventListener('dblclick', (event) => {
-        eventEditListItem(event, todo);
-        render(page);
-    });
-
-    const deleteButtonElement = document.createElement('button');
-    deleteButtonElement.classList.add('deleteBotton');
-    deleteButtonElement.innerHTML = 'X';
-    deleteButtonElement.addEventListener('click', (event) => {
-        eventDeleteListItem(event, page, todo);
-        render(page);
-    });
-
-    if (todo.isCompleted) {
-        listItem.classList.add('checked');
-        checkboxElement.innerText = '✔';
-    }
-
-    listItem.appendChild(checkboxElement);
-    listItem.appendChild(todoElement);
-    listItem.appendChild(deleteButtonElement);
-    page.listElement.appendChild(listItem);
-}
-
-function eventEditListItem(
-    event: KeyboardEvent | MouseEvent, todo: Todo): void {
-    todo.flipEditable();
-    if (event.target instanceof HTMLInputElement) {
-        todo.content = event.target.value;
-    }
-}
-
-function eventCheckListItem(todo: Todo): void {
-    todo.flipIsCompleted();
-}
-
-function eventDeleteListItem(event: MouseEvent, page: Page, todo: Todo): void {
-    page.todoList.remove(todo);
+    page.leftItemsElement.innerHTML = page.todoList.numOfLeftItems + '개 남음';
 }
 
 run();

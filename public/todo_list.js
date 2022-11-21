@@ -1,50 +1,123 @@
 //todo_list.ts
-var Todo = /** @class */ (function () {
-    function Todo(content) {
-        this._content = content;
+var TodoListItem = /** @class */ (function () {
+    function TodoListItem(content) {
+        this.itemContainer = document.createElement('li');
+        this.itemContainer.classList.add('item');
+        this.checkboxElement = document.createElement('div');
+        this.checkboxElement.classList.add('checkbox');
+        this.contentElement = document.createElement('div');
+        this.contentElement.classList.add('todo');
+        this.contentElement.innerText = content;
+        this.deleteButtonElement = document.createElement('button');
+        this.deleteButtonElement.classList.add('deleteButton');
+        this.deleteButtonElement.innerHTML = 'X';
+        this.inputElement = document.createElement('input');
+        this.inputElement.classList.add('input');
+        this.inputElement.value = content;
+        this.itemContainer.appendChild(this.checkboxElement);
+        this.itemContainer.appendChild(this.contentElement);
+        this.itemContainer.appendChild(this.deleteButtonElement);
         this._isCompleted = false;
         this._editable = false;
+        this._content = content;
     }
-    Object.defineProperty(Todo.prototype, "content", {
-        get: function () { return this._content; },
-        set: function (cont) { this._content = cont; },
-        enumerable: false,
-        configurable: true
-    });
-    Object.defineProperty(Todo.prototype, "isCompleted", {
+    TodoListItem.prototype.flipIsCompleted = function () {
+        this._isCompleted = !this._isCompleted;
+        if (this._isCompleted) {
+            this.itemContainer.classList.add('checked');
+            this.checkboxElement.innerText = '✔';
+        }
+        else {
+            this.itemContainer.classList.remove('checked');
+            this.checkboxElement.innerText = '';
+        }
+    };
+    TodoListItem.prototype.flipEditable = function () {
+        this._editable = !this._editable;
+        this.itemContainer.innerHTML = '';
+        this.inputElement.textContent = this._content;
+        if (this._editable) {
+            this.itemContainer.appendChild(this.inputElement);
+        }
+        else {
+            this.itemContainer.appendChild(this.checkboxElement);
+            this.itemContainer.appendChild(this.contentElement);
+            this.itemContainer.appendChild(this.deleteButtonElement);
+        }
+    };
+    Object.defineProperty(TodoListItem.prototype, "isCompleted", {
         get: function () { return this._isCompleted; },
         enumerable: false,
         configurable: true
     });
-    Object.defineProperty(Todo.prototype, "editable", {
+    Object.defineProperty(TodoListItem.prototype, "editable", {
         get: function () { return this._editable; },
         enumerable: false,
         configurable: true
     });
-    Todo.prototype.flipIsCompleted = function () { this._isCompleted = !this._isCompleted; };
-    Todo.prototype.flipEditable = function () { this._editable = !this._editable; };
-    return Todo;
+    Object.defineProperty(TodoListItem.prototype, "content", {
+        get: function () { return this._content; },
+        enumerable: false,
+        configurable: true
+    });
+    Object.defineProperty(TodoListItem.prototype, "container", {
+        get: function () { return this.itemContainer; },
+        enumerable: false,
+        configurable: true
+    });
+    TodoListItem.prototype.setContent = function (content) {
+        this._content = content;
+        this.inputElement.value = this._content;
+        this.contentElement.innerText = this._content;
+    };
+    return TodoListItem;
 }());
 var TodoList = /** @class */ (function () {
     function TodoList() {
-        this.todos = [];
+        this._items = [];
     }
-    TodoList.prototype.append = function (todo) {
-        if (typeof todo === 'string') {
-            return this.todos.push(new Todo(todo));
+    TodoList.prototype.add = function (item) {
+        if (item instanceof TodoListItem) {
+            return this._items.push(item);
         }
         else {
-            return this.todos.push(todo);
+            var tItem = new TodoListItem(item);
+            return this._items.push(tItem);
         }
     };
-    TodoList.prototype.remove = function (todo) {
-        var index = this.todos.indexOf(todo);
-        if (index > -1) {
-            this.todos.splice(index, 1);
+    TodoList.prototype.remove = function (item) {
+        for (var i = 0; i < this._items.length; i++) {
+            if (this._items[i].container === item) {
+                this._items.splice(i, 1);
+                return i;
+            }
+        }
+        return -1;
+    };
+    TodoList.prototype.flipIsCompleted = function (item) {
+        for (var i = 0; i < this._items.length; i++) {
+            if (this._items[i].container === item) {
+                this._items[i].flipIsCompleted();
+            }
         }
     };
+    TodoList.prototype.flipEditable = function (item, content) {
+        for (var i = 0; i < this._items.length; i++) {
+            if (this._items[i].container === item) {
+                this._items[i].setContent(content);
+                this._items[i].flipEditable();
+            }
+        }
+    };
+    Object.defineProperty(TodoList.prototype, "numOfLeftItems", {
+        get: function () {
+            return this._items.filter(function (todo) { return todo.isCompleted === false; }).length;
+        },
+        enumerable: false,
+        configurable: true
+    });
     Object.defineProperty(TodoList.prototype, "array", {
-        get: function () { return this.todos; },
+        get: function () { return this._items; },
         enumerable: false,
         configurable: true
     });
@@ -106,101 +179,75 @@ function initRemoveCheckedItemsElement() {
 }
 function addPageEventListener(page) {
     page.inputElement.addEventListener('keypress', function (event) {
-        if (event.key === 'Enter' &&
-            event.target.value !== '') {
-            eventAddListItem(event, page);
+        if (event.target instanceof HTMLInputElement &&
+            event.target.value !== '' &&
+            event.key === 'Enter') {
+            eventAddListItem(event.target, page);
             render(page);
         }
     });
-    page.removeCheckedItemsElement.addEventListener('click', function (event) {
+    page.removeCheckedItemsElement.addEventListener('click', function () {
         eventRemoveCheckedItem(page);
         render(page);
+    });
+    page.listElement.addEventListener('click', function (event) {
+        if (event.target instanceof HTMLDivElement &&
+            event.target.classList.value === 'checkbox') {
+            eventCheckListItem(event.target, page);
+            render(page);
+        }
+        else if (event.target instanceof HTMLButtonElement &&
+            event.target.innerHTML === 'X') {
+            eventDeleteListItem(event.target, page);
+            render(page);
+        }
+    });
+    page.listElement.addEventListener('dblclick', function (event) {
+        if (event.target instanceof HTMLDivElement &&
+            event.target.classList.value === 'todo') {
+            eventEditListItem(event.target, page);
+            render(page);
+        }
+    });
+    page.listElement.addEventListener('keypress', function (event) {
+        if (event.target instanceof HTMLInputElement &&
+            event.target.value !== '' &&
+            event.key === 'Enter') {
+            eventEditListItem(event.target, page);
+            render(page);
+        }
     });
 }
 function eventRemoveCheckedItem(page) {
     for (var i = page.todoList.array.length; i--;) {
         if (page.todoList.array[i].isCompleted) {
-            page.todoList.remove(page.todoList.array[i]);
+            page.todoList.remove(page.todoList.array[i].container);
         }
     }
 }
-function eventAddListItem(event, page) {
-    var content = event.target.value;
-    page.todoList.append(content);
+function eventAddListItem(target, page) {
+    page.todoList.add(target.value);
     page.inputElement.value = '';
+}
+function eventEditListItem(target, page) {
+    if (target instanceof HTMLInputElement) {
+        page.todoList.flipEditable(target.parentNode, target.value);
+    }
+    else {
+        page.todoList.flipEditable(target.parentNode, target.innerText);
+    }
+}
+function eventCheckListItem(target, page) {
+    page.todoList.flipIsCompleted(target.parentElement);
+}
+function eventDeleteListItem(target, page) {
+    page.todoList.remove(target.parentNode);
 }
 function render(page) {
     page.listElement.innerHTML = '';
     page.todoList.array.forEach(function (todo) {
-        if (todo.editable) {
-            createEditItem(page, todo);
-        }
-        else {
-            createReadItem(page, todo);
-        }
+        page.listElement.appendChild(todo.container);
     });
-    var getLeftItems = function () {
-        return page.todoList.array.filter(function (todo) { return todo.isCompleted === false; });
-    };
-    page.leftItemsElement.innerHTML = getLeftItems().length + '개 남음';
-}
-function createEditItem(page, todo) {
-    var listItem = document.createElement('li');
-    listItem.classList.add('item');
-    var inputElement = document.createElement('input');
-    inputElement.value = todo.content;
-    inputElement.classList.add('editInput');
-    inputElement.addEventListener('keypress', function (event) {
-        if (event.key === 'Enter') {
-            eventEditListItem(event, todo);
-            render(page);
-        }
-    });
-    listItem.appendChild(inputElement);
-    page.listElement.appendChild(listItem);
-}
-function createReadItem(page, todo) {
-    var listItem = document.createElement('li');
-    listItem.classList.add('item');
-    var checkboxElement = document.createElement('div');
-    checkboxElement.classList.add('checkbox');
-    checkboxElement.addEventListener('click', function (event) {
-        eventCheckListItem(todo);
-        render(page);
-    });
-    var todoElement = document.createElement('div');
-    todoElement.classList.add('todo');
-    todoElement.innerText = todo.content;
-    todoElement.addEventListener('dblclick', function (event) {
-        eventEditListItem(event, todo);
-        render(page);
-    });
-    var deleteButtonElement = document.createElement('button');
-    deleteButtonElement.classList.add('deleteBotton');
-    deleteButtonElement.innerHTML = 'X';
-    deleteButtonElement.addEventListener('click', function (event) {
-        eventDeleteListItem(event, page, todo);
-        render(page);
-    });
-    if (todo.isCompleted) {
-        listItem.classList.add('checked');
-        checkboxElement.innerText = '✔';
-    }
-    listItem.appendChild(checkboxElement);
-    listItem.appendChild(todoElement);
-    listItem.appendChild(deleteButtonElement);
-    page.listElement.appendChild(listItem);
-}
-function eventEditListItem(event, todo) {
-    todo.flipEditable();
-    if (event.target instanceof HTMLInputElement) {
-        todo.content = event.target.value;
-    }
-}
-function eventCheckListItem(todo) {
-    todo.flipIsCompleted();
-}
-function eventDeleteListItem(event, page, todo) {
-    page.todoList.remove(todo);
+    page.leftItemsElement.innerHTML = page.todoList.numOfLeftItems + '개 남음';
 }
 run();
